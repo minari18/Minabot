@@ -1,7 +1,10 @@
+import asyncio
 import discord
 import responses
 import gaccha
+import gpt
 import os
+import sqlite3
 import time
 import yt_dlp
 from dotenv import load_dotenv
@@ -9,6 +12,7 @@ from dotenv import load_dotenv
 
 queue = []
 load_dotenv()
+DB_PATH = "gacha.db"
 
 
 async def send_message(message, user_message, is_private):
@@ -19,8 +23,8 @@ async def send_message(message, user_message, is_private):
             if is_private
             else await message.channel.send(response)
         )
-    except Exception:
-        print(" ")
+    except Exception as e:
+        return
 
 
 def Run_DiscordBot():
@@ -34,57 +38,108 @@ def Run_DiscordBot():
         username = message.author
         user_message = message.content
         channel = message.channel
+
+        # Meterse al canal de voz
         try:
             voice_channel = message.author.voice.channel
         except AttributeError:
             " "
-        if message.author == client.user:
-            return
 
+        # Menciones al bot
+        if client.user in message.mentions:
+            prompt = message.content.replace(f"<@{client.user.id}>", "").strip()
+            # Validar si no hay mensaje aparte de lam ención
+            if not prompt:
+                await message.channel.send(
+                    "Hola!! Soy Testbot0418 ૮ ˶ᵔ ᵕ ᵔ˶ ა. ¿En qué puedo ayudarte?"
+                )
+                return
+            response = gpt.ask_gpt(prompt)
+            await message.channel.send(response)
+
+        # Mensajes de usuarios del servidor
         print(f'{username} said: "{user_message}" ({channel})')
 
         if user_message == "-gacha":
             whoosh = "*Whooooosh* ✧･ﾟ: *✧･ﾟ:*:✧･ﾟ: *✧･ﾟ:* ..."
-            conseguido = str(gaccha.genshin(message))
-            print("Deseo: ", conseguido)
+            obtained, rarity, pity = gaccha.genshin(message.author)
+            print("Deseo: ", obtained)
             await message.channel.send(whoosh)
             time.sleep(2)
-            await message.channel.send(conseguido)
+            if rarity == 4:
+                gif = await message.channel.send(file=discord.File("wish/4star.gif"))
+                await asyncio.sleep(8)
+                await gif.delete()
+                await message.channel.send(
+                    file=discord.File(f"gchars/{obtained.lower()}.png")
+                )
+                char_msg = f"Obtuviste... {obtained}!!\nPity: {pity}"
+                await message.channel.send(char_msg)
+            elif rarity == 5:
+                gif = await message.channel.send(file=discord.File("wish/5star.gif"))
+                await asyncio.sleep(8)
+                await gif.delete()
+                await message.channel.send(
+                    file=discord.File(f"gchars/{obtained.lower()}.png")
+                )
+                char_msg = f"Obtuviste... {obtained}!!\nPity: {pity}"
+                await message.channel.send(char_msg)
+            else:
+                await message.channel.send(f"Obtuviste... {obtained}!!\nPity: {pity}")
+
         elif user_message == "-personajes":
-            # 4stars
-            archivo = open(str(message.author) + "_fourstars" + ".txt", "r+")
-            leer = archivo.readlines()
-            cuatros = []
+            conn = sqlite3.connect(DB_PATH)
+            c = conn.cursor()
 
-            for lines in leer:
-                cuatros.append(lines.strip())
+            # Usamos discrim/username como user_id
+            user_id = int(message.author.id)
 
-            print(cuatros)
-
-            # 5stars
-            archivo2 = open(str(message.author) + "_fivestars" + ".txt", "r+")
-            leer2 = archivo2.readlines()
-            cincos = []
-
-            for lines in leer2:
-                cincos.append(lines.strip())
-
-            print(cincos)
-
-            # Enviar el msje con los psjes
-
-            msje_chars = (
-                "Hola "
-                + str(message.author)
-                + "!!"
-                + "\nTus personajes cuatro estrellas son: "
-                + "\n"
-                + str(cuatros)
-                + "\nY tus personajes cinco estrellas son: "
-                + "\n"
-                + str(cincos)
+            c.execute(
+                """
+                SELECT c.name, c.rarity, ui.constellation, ui.obt_date
+                FROM user_inventory AS ui
+                JOIN characters AS c ON ui.char_id = c.char_id
+                WHERE ui.user_id = ?
+                ORDER BY c.rarity DESC, c.name
+                """,
+                (user_id,),
             )
-            await message.channel.send(msje_chars)
+
+            rows = c.fetchall()
+            conn.close()
+
+            if not rows:
+                await message.channel.send("Aún no tienes personajes. Usa -gacha :D")
+                return
+
+            # Separar por rareza
+            five = [
+                (r[0], r[2], r[3]) for r in rows if r[1] == 5
+            ]  # (name, quantity, date)
+            four = [(r[0], r[2], r[3]) for r in rows if r[1] == 4]
+
+            # Construcción del mensaje
+            msg = f"Hola {message.author.name}!!\n\n"
+
+            msg += "Acá están tus personajes cinco estrellas:\n"
+            if five:
+                for name, qty, date in five:
+                    msg += f"{name} (C{qty-1}) | Obtenido el {date}\n"
+            else:
+                msg += "Ninguno\n"
+
+            msg += "\nY acá están tus personajes cuatro estrellas:\n"
+            if four:
+                for name, qty, date in four:
+                    msg += f"{name} (C{qty-1}) | Obtenido el {date}\n"
+            else:
+                msg += "Ninguno\n"
+
+            total_personajes = len(rows)
+
+            msg += f"\nTienes un total de **{total_personajes} personajes!!**"
+
+            await message.channel.send(msg)
 
         elif user_message == "-comandos":
             comandos = "play; pause; stop; gachainfo; gacha; personajes; dado; pet"

@@ -1,14 +1,9 @@
 # TestBot0418
-### Description:
-Primer proyecto personal en Python, consistiendo de un bot de discord responsivo a comandos de los usuarios dentro del servidor. El proyecto fue desarrollado principalmente con la librería discord.py. 
-Este bot fue luego deployeado con Amazon Web Services para mantenerlo activo.
+Multifunctional discord bot I made as a personal project. It includes python programming, SQLite3 database managing, and the use of the openAI API.
 
-Alguna de sus características incluyen:
--Reproducción de música de Youtube con yt_dlp y ffmpeg
--Réplica del sistema de gacha de Genshin Impact
--Sistema de gacha con mascotas
--Respuestas específicas a algunos mensajes
+Main Features:
+- YouTube music integration (via yt_dlp & ffmpeg)
+- Genshin Impact gacha system replica
+- AI-generated replies powered by OpenAI
 
-Implementacioens futuras:
-- Inteligencia artificial con la API de OpenAI
-- Implementación de una base de datos como sistema de almacenamiento
+All genshin characters art belong to Hoyoverse. ffmpeg needs to be integrated into the project's directory to be able to use the play youtube music feature.

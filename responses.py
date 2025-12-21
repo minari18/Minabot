@@ -1,8 +1,6 @@
 # Archivo que guarda las respuesta del bot ante un mensaje
 import random
-import gaccha
 from gaccha import *
-import discord
 
 
 def Randomize(a):
