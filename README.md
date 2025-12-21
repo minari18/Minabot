@@ -1,4 +1,4 @@
-# TestBot0418
+# Minabot
 Multifunctional discord bot I made as a personal project. It includes python programming, SQLite3 database managing, and the use of the openAI API.
 
 Main Features:
